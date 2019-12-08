@@ -1,10 +1,7 @@
 package intCodeComputer;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class IntCodeComputer extends Thread {
@@ -21,71 +18,68 @@ public class IntCodeComputer extends Thread {
 
 	@Override
 	public void run() {
-		int pointer = 0;
+		int instruction_pointer = 0;
+		String name = "IntCodeComputer-" + this.getId();
 
 		execution: while (true) {
-			Integer instruction = mem.get(pointer);
-			Integer opCode = getOPCode(instruction);
-			Operation operation = Operation.ofCode(opCode);
-			List<Integer> argumentModes = getArgumentModes(instruction, operation.numArguments);
-			List<Integer> arguments = getArguments(mem, pointer, operation, argumentModes);
+			Integer instruction = mem.get(instruction_pointer);
+			Integer opCode = getOPCodeFrom(instruction);
+			Operation operation = Operation.ofOPCode(opCode);
+			int[] argumentModes = getArgumentModes(instruction, operation.numArguments);
+			int[] p_args = getArgumentPointers(instruction_pointer, operation.numArguments, argumentModes);
 
 			switch (operation) {
 			case ADDITION:
-				mem.put(arguments.get(2), arguments.get(0) + arguments.get(1));
+				mem.put(p_args[2], mem.get(p_args[0]) + mem.get(p_args[1]));
 				break;
-			case HALT:
-				System.out.println(this.getName() + " halting.");
-				break execution;
+			case MULTIPLICATION:
+				mem.put(p_args[2], mem.get(p_args[0]) * mem.get(p_args[1]));
+				break;
 			case INPUT:
 				synchronized (input) {
 					if (input.isEmpty()) {
 						try {
-							// System.out.println("Waiting for input");
 							input.wait();
 						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
 						}
 					}
 				}
-				System.out.println(this.getName() + " taking " + input.peek());
-				mem.put(arguments.get(0), input.poll());
-				break;
-			case MULTIPLICATION:
-				mem.put(arguments.get(2), arguments.get(0) * arguments.get(1));
+				System.out.println(name + " <--[in]\t" + input.peek());
+				mem.put(p_args[0], input.poll());
 				break;
 			case OUTPUT:
 				synchronized (output) {
-					output.add(arguments.get(0));
-					System.out.println(this.getName() + " putting " + arguments.get(0));
+					output.add(mem.get(p_args[0]));
+					System.out.println(name + " [out]-->\t" + mem.get(p_args[0]));
 					output.notifyAll();
 				}
-				// System.out.println(arguments.get(0));
 				break;
 			case EQUALS:
-				mem.put(arguments.get(2), arguments.get(0).equals(arguments.get(1)) ? 1 : 0);
+				mem.put(p_args[2], mem.get(p_args[0]).equals(mem.get(p_args[1])) ? 1 : 0);
+				break;
+			case LESS_THAN:
+				mem.put(p_args[2], mem.get(p_args[0]) < mem.get(p_args[1]) ? 1 : 0);
 				break;
 			case JUMP_IF_FALSE:
-				if (arguments.get(0) == 0) {
-					pointer = arguments.get(1);
+				if (mem.get(p_args[0]) == 0) {
+					instruction_pointer = mem.get(p_args[1]);
 					continue;
 				}
 				break;
 			case JUMP_IF_TRUE:
-				if (arguments.get(0) != 0) {
-					pointer = arguments.get(1);
+				if (mem.get(p_args[0]) != 0) {
+					instruction_pointer = mem.get(p_args[1]);
 					continue;
 				}
 				break;
-			case LESS_THAN:
-				mem.put(arguments.get(2), arguments.get(0) < arguments.get(1) ? 1 : 0);
-				break;
+			case HALT:
+				System.out.println(name + " halting.");
+				break execution;
 			default:
 				break;
 			}
 
-			pointer += operation.numArguments + 1;
+			instruction_pointer += 1 + operation.numArguments;
 		}
 	}
 
@@ -93,34 +87,31 @@ public class IntCodeComputer extends Thread {
 		return this.output;
 	}
 
-	private static List<Integer> getArguments(Map<Integer, Integer> mem, int curPointer, Operation operation, List<Integer> argumentModes) {
-		return IntStream.range(0, operation.numArguments).mapToObj(i -> {
-			if (argumentModes.get(i) == 0
-					&& !((i == 2) && (operation.equals(Operation.ADDITION) || operation.equals(Operation.MULTIPLICATION)
-							|| operation.equals(Operation.LESS_THAN) || operation.equals(Operation.EQUALS)))
-					&& !(i == 0 && operation.equals(Operation.INPUT))) {
-				return mem.get(mem.get(curPointer + 1 + i));
-			} else {
+	private int[] getArgumentPointers(int curPointer, int numArguments, int[] argumentModes) {
+		return IntStream.range(0, numArguments).map(i -> {
+			if (argumentModes[i] == 0) {
 				return mem.get(curPointer + 1 + i);
+			} else {
+				return curPointer + 1 + i;
 			}
-		}).collect(Collectors.toList());
+		}).toArray();
 	}
 
-	private static List<Integer> getArgumentModes(Integer opCode, int numArguments) {
-		List<Integer> modes = new ArrayList<>();
+	private int[] getArgumentModes(Integer opCode, int numArguments) {
+		int[] modes = new int[numArguments];
 
 		for (int i = 0; i < numArguments; i++) {
 			int divisor = 1;
 			for (int j = 0; j < i + 2; j++) {
 				divisor *= 10;
 			}
-			modes.add(opCode / divisor % 10);
+			modes[i] = (opCode / divisor % 10);
 		}
 
 		return modes;
 	}
 
-	private static Integer getOPCode(Integer instruction) {
+	private static Integer getOPCodeFrom(Integer instruction) {
 		return instruction % 100;
 	}
 
@@ -142,7 +133,7 @@ public class IntCodeComputer extends Thread {
 			this.numArguments = numArgument;
 		}
 
-		public static Operation ofCode(int opCode) {
+		public static Operation ofOPCode(int opCode) {
 			switch (opCode) {
 			case 1:
 				return ADDITION;
