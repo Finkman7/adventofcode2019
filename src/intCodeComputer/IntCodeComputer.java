@@ -8,7 +8,7 @@ public class IntCodeComputer extends Thread {
 	private Map<Long, Long>				mem;
 	private ConcurrentLinkedQueue<Long>	input;
 	private ConcurrentLinkedQueue<Long>	output;
-	private long						relBase	= 0l;
+	private long						instruction_pointer	= 0l, relBase = 0l;
 
 	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output) {
 		this.mem = mem;
@@ -18,7 +18,6 @@ public class IntCodeComputer extends Thread {
 
 	@Override
 	public void run() {
-		long instruction_pointer = 0;
 		String name = "LongCodeComputer-" + this.getId();
 
 		execution: while (true) {
@@ -79,7 +78,8 @@ public class IntCodeComputer extends Thread {
 				relBase += read(p_args[0]);
 				break;
 			default:
-				break;
+				System.err.println(name + " halting because of unknown opcode.");
+				break execution;
 			}
 
 			instruction_pointer += 1 + operation.numArguments;
@@ -92,20 +92,8 @@ public class IntCodeComputer extends Thread {
 		return value != null ? value : 0l;
 	}
 
-	public ConcurrentLinkedQueue<Long> getOutput() {
-		return this.output;
-	}
-
-	private long[] getArgumentPointers(long curPointer, int numArguments, long[] argumentModes) {
-		return IntStream.range(0, numArguments).mapToLong(i -> {
-			if (argumentModes[i] == 0) {
-				return read(curPointer + 1 + i);
-			} else if (argumentModes[i] == 1) {
-				return curPointer + 1 + i;
-			} else {
-				return relBase + read(curPointer + 1 + i);
-			}
-		}).toArray();
+	private static int getOPCodeFrom(long instruction) {
+		return (int) (instruction % 100);
 	}
 
 	private long[] getArgumentModes(Long opCode, int numArguments) {
@@ -122,8 +110,20 @@ public class IntCodeComputer extends Thread {
 		return modes;
 	}
 
-	private static int getOPCodeFrom(long instruction) {
-		return (int) (instruction % 100);
+	private long[] getArgumentPointers(long curPointer, int numArguments, long[] argumentModes) {
+		return IntStream.range(0, numArguments).mapToLong(i -> {
+			if (argumentModes[i] == 0) {
+				return read(curPointer + 1 + i);
+			} else if (argumentModes[i] == 1) {
+				return curPointer + 1 + i;
+			} else {
+				return relBase + read(curPointer + 1 + i);
+			}
+		}).toArray();
+	}
+
+	public ConcurrentLinkedQueue<Long> getOutput() {
+		return this.output;
 	}
 
 	public static void memoryFromFile(Map<Long, Long> mem, String line) {
