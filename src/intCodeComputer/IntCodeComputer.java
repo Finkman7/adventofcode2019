@@ -5,12 +5,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.IntStream;
 
 public class IntCodeComputer extends Thread {
-	private Map<Integer, Integer>			mem;
-	private ConcurrentLinkedQueue<Integer>	input;
-	private ConcurrentLinkedQueue<Integer>	output;
+	private Map<Long, Long>				mem;
+	private ConcurrentLinkedQueue<Long>	input;
+	private ConcurrentLinkedQueue<Long>	output;
+	private long						relBase	= 0l;
 
-	public IntCodeComputer(Map<Integer, Integer> mem, ConcurrentLinkedQueue<Integer> input,
-			ConcurrentLinkedQueue<Integer> output) {
+	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output) {
 		this.mem = mem;
 		this.input = input;
 		this.output = output;
@@ -18,22 +18,22 @@ public class IntCodeComputer extends Thread {
 
 	@Override
 	public void run() {
-		int instruction_pointer = 0;
-		String name = "IntCodeComputer-" + this.getId();
+		long instruction_pointer = 0;
+		String name = "LongCodeComputer-" + this.getId();
 
 		execution: while (true) {
-			Integer instruction = mem.get(instruction_pointer);
-			Integer opCode = getOPCodeFrom(instruction);
+			long instruction = read(instruction_pointer);
+			int opCode = getOPCodeFrom(instruction);
 			Operation operation = Operation.ofOPCode(opCode);
-			int[] argumentModes = getArgumentModes(instruction, operation.numArguments);
-			int[] p_args = getArgumentPointers(instruction_pointer, operation.numArguments, argumentModes);
+			long[] argumentModes = getArgumentModes(instruction, operation.numArguments);
+			long[] p_args = getArgumentPointers(instruction_pointer, operation.numArguments, argumentModes);
 
 			switch (operation) {
 			case ADDITION:
-				mem.put(p_args[2], mem.get(p_args[0]) + mem.get(p_args[1]));
+				mem.put(p_args[2], read(p_args[0]) + read(p_args[1]));
 				break;
 			case MULTIPLICATION:
-				mem.put(p_args[2], mem.get(p_args[0]) * mem.get(p_args[1]));
+				mem.put(p_args[2], read(p_args[0]) * read(p_args[1]));
 				break;
 			case INPUT:
 				synchronized (input) {
@@ -49,32 +49,35 @@ public class IntCodeComputer extends Thread {
 				break;
 			case OUTPUT:
 				synchronized (output) {
-					output.add(mem.get(p_args[0]));
-					System.out.println(name + " [out]-->\t" + mem.get(p_args[0]));
+					output.add(read(p_args[0]));
+					System.out.println(name + " [out]-->\t" + read(p_args[0]));
 					output.notifyAll();
 				}
 				break;
 			case EQUALS:
-				mem.put(p_args[2], mem.get(p_args[0]).equals(mem.get(p_args[1])) ? 1 : 0);
+				mem.put(p_args[2], read(p_args[0]).equals(read(p_args[1])) ? 1l : 0l);
 				break;
 			case LESS_THAN:
-				mem.put(p_args[2], mem.get(p_args[0]) < mem.get(p_args[1]) ? 1 : 0);
+				mem.put(p_args[2], read(p_args[0]) < read(p_args[1]) ? 1l : 0l);
 				break;
 			case JUMP_IF_FALSE:
-				if (mem.get(p_args[0]) == 0) {
-					instruction_pointer = mem.get(p_args[1]);
+				if (read(p_args[0]) == 0) {
+					instruction_pointer = read(p_args[1]);
 					continue;
 				}
 				break;
 			case JUMP_IF_TRUE:
-				if (mem.get(p_args[0]) != 0) {
-					instruction_pointer = mem.get(p_args[1]);
+				if (read(p_args[0]) != 0) {
+					instruction_pointer = read(p_args[1]);
 					continue;
 				}
 				break;
 			case HALT:
 				System.out.println(name + " halting.");
 				break execution;
+			case RELBASE_OFFSET:
+				relBase += read(p_args[0]);
+				break;
 			default:
 				break;
 			}
@@ -83,25 +86,33 @@ public class IntCodeComputer extends Thread {
 		}
 	}
 
-	public ConcurrentLinkedQueue<Integer> getOutput() {
+	private Long read(long address) {
+		Long value = mem.get(address);
+
+		return value != null ? value : 0l;
+	}
+
+	public ConcurrentLinkedQueue<Long> getOutput() {
 		return this.output;
 	}
 
-	private int[] getArgumentPointers(int curPointer, int numArguments, int[] argumentModes) {
-		return IntStream.range(0, numArguments).map(i -> {
+	private long[] getArgumentPointers(long curPointer, int numArguments, long[] argumentModes) {
+		return IntStream.range(0, numArguments).mapToLong(i -> {
 			if (argumentModes[i] == 0) {
-				return mem.get(curPointer + 1 + i);
-			} else {
+				return read(curPointer + 1 + i);
+			} else if (argumentModes[i] == 1) {
 				return curPointer + 1 + i;
+			} else {
+				return relBase + read(curPointer + 1 + i);
 			}
 		}).toArray();
 	}
 
-	private int[] getArgumentModes(Integer opCode, int numArguments) {
-		int[] modes = new int[numArguments];
+	private long[] getArgumentModes(Long opCode, int numArguments) {
+		long[] modes = new long[numArguments];
 
 		for (int i = 0; i < numArguments; i++) {
-			int divisor = 1;
+			long divisor = 1;
 			for (int j = 0; j < i + 2; j++) {
 				divisor *= 10;
 			}
@@ -111,21 +122,21 @@ public class IntCodeComputer extends Thread {
 		return modes;
 	}
 
-	private static Integer getOPCodeFrom(Integer instruction) {
-		return instruction % 100;
+	private static int getOPCodeFrom(long instruction) {
+		return (int) (instruction % 100);
 	}
 
-	public static void memoryFromFile(Map<Integer, Integer> mem, String line) {
+	public static void memoryFromFile(Map<Long, Long> mem, String line) {
 		String[] tokens = line.split(",");
 
 		for (int i = 0; i < tokens.length; i++) {
-			mem.put(i, Integer.valueOf(tokens[i]));
+			mem.put((long) i, Long.valueOf(tokens[i]));
 		}
 	}
 
 	private enum Operation {
 		ADDITION(3), MULTIPLICATION(3), HALT(0), INPUT(1), OUTPUT(1), JUMP_IF_TRUE(2), JUMP_IF_FALSE(2), LESS_THAN(
-				3), EQUALS(3);
+				3), EQUALS(3), RELBASE_OFFSET(1);
 
 		public final int numArguments;
 
@@ -153,6 +164,8 @@ public class IntCodeComputer extends Thread {
 				return LESS_THAN;
 			case 8:
 				return EQUALS;
+			case 9:
+				return RELBASE_OFFSET;
 			}
 
 			return null;

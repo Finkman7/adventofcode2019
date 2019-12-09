@@ -53,7 +53,7 @@ public class Task07 {
 		// System.out.println(bestOutput);
 
 		// b
-		int bestOutput = 0;
+		long bestOutput = 0;
 		for (int a = 5; a <= 9; a++) {
 			for (int b = 5; b <= 9; b++) {
 				for (int c = 5; c <= 9; c++) {
@@ -66,16 +66,16 @@ public class Task07 {
 							List<Integer> combination = List.of(a, b, c, d, e);
 
 							Map<Integer, IntCodeComputer> amplifiers = new HashMap<>();
-							ConcurrentLinkedQueue<Integer> feedbackLink = new ConcurrentLinkedQueue<>();
+							ConcurrentLinkedQueue<Long> feedbackLink = new ConcurrentLinkedQueue<>();
 							for (int i = 0; i < 5; i++) {
-								ConcurrentLinkedQueue<Integer> input, output;
+								ConcurrentLinkedQueue<Long> input, output;
 								if (i == 0) {
 									input = feedbackLink;
-									feedbackLink.add(combination.get(i));
-									feedbackLink.add(0);
+									feedbackLink.add((long) combination.get(i));
+									feedbackLink.add(0l);
 								} else {
 									input = amplifiers.get(i - 1).getOutput();
-									input.add(combination.get(i));
+									input.add((long) combination.get(i));
 								}
 								if (i == 4) {
 									output = feedbackLink;
@@ -83,8 +83,8 @@ public class Task07 {
 									output = new ConcurrentLinkedQueue<>();
 								}
 
-								IntCodeComputer amp = new IntCodeComputer((Map<Integer, Integer>) initState.clone(),
-										input, output);
+								IntCodeComputer amp = new IntCodeComputer((Map<Long, Long>) initState.clone(), input,
+										output);
 								amplifiers.put(i, amp);
 							}
 
@@ -99,7 +99,7 @@ public class Task07 {
 								e1.printStackTrace();
 							}
 
-							int output = amplifiers.get(4).getOutput().poll();
+							long output = amplifiers.get(4).getOutput().poll();
 							if (output > bestOutput) {
 								bestOutput = output;
 							}
