@@ -12,15 +12,11 @@ import intCodeComputer.IntCodeComputer;
 
 public class Task07 {
 
-	private static HashMap initState;
+	private static HashMap<Long, Long> initState;
 
 	public static void main(String[] args) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get("inputs/input07.txt"));
-		initState = new HashMap<>();
-
-		for (String line : lines) {
-			IntCodeComputer.memoryFromFile(initState, line);
-		}
+		initState = IntCodeComputer.initMemory(lines.get(0));
 
 		// a
 		// int bestOutput = 0;

@@ -16,11 +16,7 @@ public class Task09 {
 
 	public static void main(String[] args) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get("inputs/input09.txt"));
-		initState = new HashMap<>();
-
-		for (String line : lines) {
-			IntCodeComputer.memoryFromFile(initState, line);
-		}
+		initState = IntCodeComputer.initMemory(lines.get(0));
 
 		ConcurrentLinkedQueue<Long> input = new ConcurrentLinkedQueue<>(), output = new ConcurrentLinkedQueue<>();
 		input.add(2l);

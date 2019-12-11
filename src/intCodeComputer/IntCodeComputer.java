@@ -1,5 +1,6 @@
 package intCodeComputer;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.IntStream;
@@ -43,13 +44,13 @@ public class IntCodeComputer extends Thread {
 						}
 					}
 				}
-				System.out.println(name + " <--[in]\t" + input.peek());
+				// System.out.println(name + " <--[in]\t" + input.peek());
 				mem.put(p_args[0], input.poll());
 				break;
 			case OUTPUT:
 				synchronized (output) {
 					output.add(read(p_args[0]));
-					System.out.println(name + " [out]-->\t" + read(p_args[0]));
+					// System.out.println(name + " [out]-->\t" + read(p_args[0]));
 					output.notifyAll();
 				}
 				break;
@@ -73,6 +74,9 @@ public class IntCodeComputer extends Thread {
 				break;
 			case HALT:
 				System.out.println(name + " halting.");
+				synchronized (output) {
+					output.notifyAll();
+				}
 				break execution;
 			case RELBASE_OFFSET:
 				relBase += read(p_args[0]);
@@ -126,12 +130,15 @@ public class IntCodeComputer extends Thread {
 		return this.output;
 	}
 
-	public static void memoryFromFile(Map<Long, Long> mem, String line) {
+	public static HashMap<Long, Long> initMemory(String line) {
+		HashMap<Long, Long> mem = new HashMap<>();
 		String[] tokens = line.split(",");
 
 		for (int i = 0; i < tokens.length; i++) {
 			mem.put((long) i, Long.valueOf(tokens[i]));
 		}
+
+		return mem;
 	}
 
 	private enum Operation {
