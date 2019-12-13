@@ -11,6 +11,8 @@ public class IntCodeComputer extends Thread {
 	private ConcurrentLinkedQueue<Long>	output;
 	private long						instruction_pointer	= 0l, relBase = 0l;
 
+	private volatile boolean			waitingForInput		= false;
+
 	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output) {
 		this.mem = mem;
 		this.input = input;
@@ -19,7 +21,7 @@ public class IntCodeComputer extends Thread {
 
 	@Override
 	public void run() {
-		String name = "LongCodeComputer-" + this.getId();
+		String name = "IntCodeComputer-" + this.getId();
 
 		execution: while (true) {
 			long instruction = read(instruction_pointer);
@@ -37,9 +39,17 @@ public class IntCodeComputer extends Thread {
 				break;
 			case INPUT:
 				synchronized (input) {
-					if (input.isEmpty()) {
+					while (input.isEmpty()) {
+						waitingForInput = true;
+						synchronized (this) {
+							System.out.println("iunputa not");
+							this.notifyAll();
+						}
 						try {
+							System.out.println("waiting for input");
 							input.wait();
+							System.out.println("set false");
+							waitingForInput = false;
 						} catch (InterruptedException e) {
 						}
 					}
@@ -52,6 +62,10 @@ public class IntCodeComputer extends Thread {
 					output.add(read(p_args[0]));
 					// System.out.println(name + " [out]-->\t" + read(p_args[0]));
 					output.notifyAll();
+					synchronized (this) {
+						System.out.println("oztut not " + read(p_args[0]));
+						this.notifyAll();
+					}
 				}
 				break;
 			case EQUALS:
@@ -178,6 +192,11 @@ public class IntCodeComputer extends Thread {
 			return null;
 		}
 
+	}
+
+	public boolean requestedInput() {
+		System.out.println("return " + waitingForInput);
+		return waitingForInput;
 	}
 
 }
