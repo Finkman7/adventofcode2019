@@ -8,56 +8,42 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
+import intCodeComputer.IntCodeComputerEvent;
 
 public class Task13 {
-	static ConcurrentLinkedQueue<Long>	input	= new ConcurrentLinkedQueue<>(), output = new ConcurrentLinkedQueue<>();
-	private static IntCodeComputer		c;
+	private static ConcurrentLinkedQueue<Long>					input		= new ConcurrentLinkedQueue<>(),
+			output = new ConcurrentLinkedQueue<>();
+	private static ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue	= new ConcurrentLinkedQueue<>();
+	private static IntCodeComputer								c;
 
-	static Coordinate					ball	= new Coordinate(0, 0);
-	static Coordinate					paddle	= null;
-	static int							score	= 0;
-	static Board						board	= new Board();
+	static Board												board		= new Board();
+	static Coordinate											ball		= new Coordinate(0, 0);
+	static Coordinate											paddle		= null;
+	static int													score		= 0;
 
 	public static void main(String[] args) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get("inputs/input13.txt"));
 		Map<Long, Long> initState = IntCodeComputer.initMemory(lines.get(0));
 
-		c = new IntCodeComputer(initState, input, output);
+		c = new IntCodeComputer(initState, input, output, eventQueue);
 		initState.put(0l, 2l);
 
 		c.start();
 		while (true) {
-			if (!c.isAlive()) {
+			c.waitForEvent();
+
+			IntCodeComputerEvent event = eventQueue.poll();
+			if (event.equals(IntCodeComputerEvent.HALT)) {
 				break;
-			} else if (!output.isEmpty()) {
-				emptyTheOutput();
-			} else if (c.requestedInput() && input.isEmpty()) {
-				emptyTheOutput();
+			} else if (event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+				printState();
 				provideInput();
-			} else {
-				synchronized (c) {
-					try {
-						System.out.println("waiting for c");
-						c.wait();
-						System.out.println("notified from c");
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-
-			if (!c.isAlive()) {
-				break;
-			} else {
-				synchronized (input) {
-					if (c.requestedInput() && input.isEmpty()) {
-						provideInput();
-					} else {
-
-					}
-				}
+			} else if (event.equals(IntCodeComputerEvent.OUTPUT)) {
+				processOutput();
 			}
 		}
+
+		printState();
 	}
 
 	private static void provideInput() {
@@ -73,40 +59,6 @@ public class Task13 {
 		}
 	}
 
-	private static void emptyTheOutput() {
-		while (!output.isEmpty()) {
-			int x = output.poll().intValue();
-			waitForOutput();
-			int y = output.poll().intValue();
-			waitForOutput();
-			int id = output.poll().intValue();
-
-			if (x == -1 && y == 0) {
-				score = id;
-				System.out.println("Score: " + score);
-			} else {
-				Coordinate c = new Coordinate(x, y);
-				board.put(c, Token.values()[id]);
-
-				if (id == Token.BALL.ordinal()) {
-					System.out.println(board);
-					System.out.println("Ball: " + c);
-
-					// dir = Direction.get(ball, c);
-					// System.out.println("Direction: " + dir);
-					ball = c;
-				} else if (id == Token.PADDLE.ordinal()) {
-					// System.out.println(board);
-					// System.out.println("Ball: " + ball);
-					System.out.println("Paddle: " + c);
-					// System.out.println("Direction: " + dir);
-					paddle = c;
-
-				}
-			}
-		}
-	}
-
 	private static void put(long nextInput) {
 		synchronized (input) {
 			input.add(nextInput);
@@ -114,14 +66,33 @@ public class Task13 {
 		}
 	}
 
-	private static void waitForOutput() {
-		synchronized (output) {
-			while (c.isAlive() && output.isEmpty()) {
-				try {
-					output.wait();
-				} catch (InterruptedException e) {
-				}
+	private static void processOutput() {
+		int x = output.poll().intValue();
+
+		c.waitForOutput();
+		int y = output.poll().intValue();
+		c.waitForOutput();
+		int arg = output.poll().intValue();
+
+		if (x == -1 && y == 0) {
+			score = arg;
+		} else {
+			Coordinate c = new Coordinate(x, y);
+			Token token = Token.values()[arg];
+			board.put(c, token);
+
+			if (token.equals(Token.BALL)) {
+				ball = c;
+			} else if (token.equals(Token.PADDLE)) {
+				paddle = c;
 			}
 		}
+	}
+
+	private static void printState() {
+		System.out.println(board);
+		System.out.println("Score: " + score);
+		System.out.println("Ball: " + ball);
+		System.out.println("Paddle: " + paddle);
 	}
 }

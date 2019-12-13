@@ -20,7 +20,8 @@ public class Task09 {
 
 		ConcurrentLinkedQueue<Long> input = new ConcurrentLinkedQueue<>(), output = new ConcurrentLinkedQueue<>();
 		input.add(2l);
-		IntCodeComputer c = new IntCodeComputer((Map<Long, Long>) initState.clone(), input, output);
+		IntCodeComputer c = new IntCodeComputer((Map<Long, Long>) initState.clone(), input, output,
+				new ConcurrentLinkedQueue<>());
 		c.run();
 		System.out.println(Arrays.toString(output.toArray()));
 	}

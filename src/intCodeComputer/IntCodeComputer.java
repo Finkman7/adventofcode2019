@@ -6,17 +6,17 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.IntStream;
 
 public class IntCodeComputer extends Thread {
-	private Map<Long, Long>				mem;
-	private ConcurrentLinkedQueue<Long>	input;
-	private ConcurrentLinkedQueue<Long>	output;
-	private long						instruction_pointer	= 0l, relBase = 0l;
+	private Map<Long, Long>								mem;
+	private ConcurrentLinkedQueue<Long>					input, output;
+	private ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue;
+	private long										instruction_pointer	= 0l, relBase = 0l;
 
-	private volatile boolean			waitingForInput		= false;
-
-	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output) {
+	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output,
+			ConcurrentLinkedQueue<IntCodeComputerEvent> eventQueue) {
 		this.mem = mem;
 		this.input = input;
 		this.output = output;
+		this.eventQueue = eventQueue;
 	}
 
 	@Override
@@ -39,17 +39,10 @@ public class IntCodeComputer extends Thread {
 				break;
 			case INPUT:
 				synchronized (input) {
+					fireEvent(IntCodeComputerEvent.INPUT_REQUEST);
 					while (input.isEmpty()) {
-						waitingForInput = true;
-						synchronized (this) {
-							System.out.println("iunputa not");
-							this.notifyAll();
-						}
 						try {
-							System.out.println("waiting for input");
 							input.wait();
-							System.out.println("set false");
-							waitingForInput = false;
 						} catch (InterruptedException e) {
 						}
 					}
@@ -60,12 +53,9 @@ public class IntCodeComputer extends Thread {
 			case OUTPUT:
 				synchronized (output) {
 					output.add(read(p_args[0]));
-					// System.out.println(name + " [out]-->\t" + read(p_args[0]));
 					output.notifyAll();
-					synchronized (this) {
-						System.out.println("oztut not " + read(p_args[0]));
-						this.notifyAll();
-					}
+					fireEvent(IntCodeComputerEvent.OUTPUT);
+					// System.out.println(name + " [out]-->\t" + read(p_args[0]));
 				}
 				break;
 			case EQUALS:
@@ -88,9 +78,7 @@ public class IntCodeComputer extends Thread {
 				break;
 			case HALT:
 				System.out.println(name + " halting.");
-				synchronized (output) {
-					output.notifyAll();
-				}
+				fireEvent(IntCodeComputerEvent.HALT);
 				break execution;
 			case RELBASE_OFFSET:
 				relBase += read(p_args[0]);
@@ -138,6 +126,32 @@ public class IntCodeComputer extends Thread {
 				return relBase + read(curPointer + 1 + i);
 			}
 		}).toArray();
+	}
+
+	private void fireEvent(IntCodeComputerEvent event) {
+		synchronized (eventQueue) {
+			eventQueue.add(event);
+			eventQueue.notifyAll();
+		}
+	}
+
+	public void waitForEvent() {
+		synchronized (eventQueue) {
+			while (eventQueue.isEmpty()) {
+				try {
+					eventQueue.wait();
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+	}
+
+	public void waitForOutput() {
+		waitForEvent();
+		IntCodeComputerEvent event = eventQueue.poll();
+		if (!event.equals(IntCodeComputerEvent.OUTPUT)) {
+			System.err.println("Protocol Error! Output expected but got " + event + " event");
+		}
 	}
 
 	public ConcurrentLinkedQueue<Long> getOutput() {
@@ -193,10 +207,4 @@ public class IntCodeComputer extends Thread {
 		}
 
 	}
-
-	public boolean requestedInput() {
-		System.out.println("return " + waitingForInput);
-		return waitingForInput;
-	}
-
 }

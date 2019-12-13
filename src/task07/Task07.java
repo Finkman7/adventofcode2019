@@ -80,7 +80,7 @@ public class Task07 {
 								}
 
 								IntCodeComputer amp = new IntCodeComputer((Map<Long, Long>) initState.clone(), input,
-										output);
+										output, new ConcurrentLinkedQueue<>());
 								amplifiers.put(i, amp);
 							}
 

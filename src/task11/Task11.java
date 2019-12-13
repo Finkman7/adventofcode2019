@@ -10,16 +10,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
+import intCodeComputer.IntCodeComputerEvent;
 
 public class Task11 {
-	static ConcurrentLinkedQueue<Long>	input	= new ConcurrentLinkedQueue<>(), output = new ConcurrentLinkedQueue<>();
-	private static IntCodeComputer		c;
+	static ConcurrentLinkedQueue<Long>					input		= new ConcurrentLinkedQueue<>(),
+			output = new ConcurrentLinkedQueue<>();
+	static ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue	= new ConcurrentLinkedQueue<>();
+	private static IntCodeComputer						c;
 
 	public static void main(String[] args) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get("inputs/input11.txt"));
 		Map<Long, Long> initState = IntCodeComputer.initMemory(lines.get(0));
 
-		c = new IntCodeComputer(initState, input, output);
+		c = new IntCodeComputer(initState, input, output, eventQueue);
 		c.start();
 
 		Board board = new Board();
@@ -28,36 +31,38 @@ public class Task11 {
 		board.put(cur, "#");
 		Set<Coordinate> visited = new HashSet<>();
 		while (true) {
-			System.out.println(board.paint(cur, dir));
-			visited.add(cur);
+			c.waitForEvent();
+			IntCodeComputerEvent event = eventQueue.poll();
 
-			long nextInput = 0l;
-			if (!board.isOccupied(cur) || board.get(cur).equals("#")) {
-				nextInput = 1l;
+			if (event.equals(IntCodeComputerEvent.HALT)) {
+				break;
+			} else if (event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+				System.out.println(board.paint(cur, dir));
+				visited.add(cur);
+
+				long nextInput = 0l;
+				if (!board.isOccupied(cur) || board.get(cur).equals("#")) {
+					nextInput = 1l;
+				}
+				put(nextInput);
+			} else if (event.equals(IntCodeComputerEvent.OUTPUT)) {
+				long color = output.poll();
+				if (color == 0) {
+					board.put(cur, ".");
+				} else {
+					board.put(cur, "#");
+				}
+
+				c.waitForOutput();
+				long turn = output.poll();
+				if (turn == 0) {
+					dir = dir.turnLeft();
+				} else if (turn == 1) {
+					dir = dir.turnRight();
+				}
+
+				cur = cur.neighbour(dir);
 			}
-			put(nextInput);
-
-			waitForOutput();
-			if (output.isEmpty()) {
-				break; // Computer halted.
-			}
-
-			long color = output.poll();
-			if (color == 0) {
-				board.put(cur, ".");
-			} else {
-				board.put(cur, "#");
-			}
-
-			waitForOutput();
-			long turn = output.poll();
-			if (turn == 0) {
-				dir = dir.turnLeft();
-			} else if (turn == 1) {
-				dir = dir.turnRight();
-			}
-
-			cur = cur.neighbour(dir);
 		}
 
 		System.out.println(visited.size());
@@ -68,17 +73,6 @@ public class Task11 {
 		synchronized (input) {
 			input.add(nextInput);
 			input.notifyAll();
-		}
-	}
-
-	private static void waitForOutput() {
-		synchronized (output) {
-			if (c.isAlive() && output.isEmpty()) {
-				try {
-					output.wait();
-				} catch (InterruptedException e) {
-				}
-			}
 		}
 	}
 }
