@@ -4,13 +4,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Task14 {
 	private static Map<String, Recipe>	recipes;
@@ -24,53 +27,57 @@ public class Task14 {
 
 		recipes = readRecipes(lines);
 
-		for (long x = 0l; x < Long.MAX_VALUE; x++) {
-			long cost = getORECostsNew(x, "FUEL");
-			if (cost > maxOre) {
-				System.err.println(x - 1);
-				System.exit(0);
-			} else {
-				System.out.println(x);
-			}
-		}
-
-		long a = 0;
-		long b = 10000000000l;
-		do {
-			long fuel = (b - a) / 2 + a;
-			System.out.println(fuel + " - " + a + "/" + b);
-			long requiredOre = getORECostsNew(fuel, "FUEL");
-			if (requiredOre < maxOre) {
-				a = fuel;
-				if (fuel == b - 1) {
-					break;
-				}
-			} else if (requiredOre > maxOre) {
-				b = fuel;
-			} else {
-				a = fuel;
-				b = fuel;
-			}
-		} while (a < b);
-
-		System.out.println(a + " -> " + getORECostsNew(a, "FUEL"));
-		System.out.println(b + " -> " + getORECostsNew(b, "FUEL"));
+		getORECostsNew(1, "FUEL");
+		// for (long x = 0l; x < Long.MAX_VALUE; x++) {
+		// long cost = getORECostsNew(x, "FUEL");
+		// if (cost > maxOre) {
+		// System.err.println(x - 1);
+		// System.exit(0);
+		// } else {
+		// System.out.println(x);
+		// }
+		// }
+		//
+		// long a = 0;
+		// long b = 10000000000l;
+		// do {
+		// long fuel = (b - a) / 2 + a;
+		// System.out.println(fuel + " - " + a + "/" + b);
+		// long requiredOre = getORECostsNew(fuel, "FUEL");
+		// if (requiredOre < maxOre) {
+		// a = fuel;
+		// if (fuel == b - 1) {
+		// break;
+		// }
+		// } else if (requiredOre > maxOre) {
+		// b = fuel;
+		// } else {
+		// a = fuel;
+		// b = fuel;
+		// }
+		// } while (a < b);
+		//
+		// System.out.println(a + " -> " + getORECostsNew(a, "FUEL"));
+		// System.out.println(b + " -> " + getORECostsNew(b, "FUEL"));
 	}
 
-	private static long getORECostsNew(long N, String string) {
+	private static long getORECostsNew(long N, String requiredIng) {
 		Map<String, Long> neededQuantities = new HashMap<>();
+		add(neededQuantities, new Quantity(N, requiredIng));
 		Map<String, Long> overflowQuantities = new HashMap<>();
 
-		add(neededQuantities, new Quantity(N, string));
+		LinkedList<String> queue = new LinkedList<>();
+		queue.add(requiredIng);
 
-		while (neededQuantities.keySet().stream().filter(i -> !i.equals("ORE")).findAny().isPresent()) {
-			// String ing = neededQuantities.keySet().stream().filter(i -> !i.equals("ORE"))
-			// .sorted(byRecipeLength.reversed()).findAny().get();
-			String ing = neededQuantities.keySet().stream().filter(i -> !i.equals("ORE"))
-					.sorted(byOccurence(neededQuantities)).findAny().get();
+		while (!queue.isEmpty()) {
+			Collections.sort(queue, byOccurence(neededQuantities));
+			System.out.println("\t\t" + overflowQuantities + " , {"
+					+ queue.stream().map(x -> neededQuantities.get(x) + " " + x).collect(Collectors.joining(", "))
+					+ "}");
+
+			String ing = queue.removeFirst();
 			long requiredOfIng = neededQuantities.get(ing);
-			// System.out.println("\t\t" + overflowQuantities + " , " + neededQuantities);
-			// System.out.print("\nREPLACE " + requiredOfIng + " " + ing);
+			System.out.print("\nREPLACE " + requiredOfIng + " " + ing);
 			if (overflowQuantities.containsKey(ing)) {
 				long overflowOfQ = overflowQuantities.get(ing);
 
@@ -79,6 +86,7 @@ public class Task14 {
 					requiredOfIng -= overflowOfQ;
 				} else {
 					overflowQuantities.put(ing, overflowOfQ - requiredOfIng);
+					requiredOfIng = 0;
 				}
 
 				if (requiredOfIng == 0) {
@@ -88,25 +96,29 @@ public class Task14 {
 				}
 			}
 
-			// System.out.println(" (" + requiredOfIng + " " + ing + " after overflow)");
+			System.out.println(" (" + requiredOfIng + " " + ing + " after overflow)");
 			Recipe r = recipes.get(ing);
 			long formulaNeeded = requiredOfIng / r.head.N + (requiredOfIng % r.head.N == 0 ? 0 : 1);
 
-			// System.out.print("\t" + r + " is required " + formulaNeeded + " times ");
+			System.out.print("\t" + r + " is required " + formulaNeeded + " times ");
 			long overflow = r.head.N * formulaNeeded - requiredOfIng;
 			if (overflow > 0) {
 				overflowQuantities.put(ing, r.head.N * formulaNeeded - requiredOfIng);
 			}
-			// System.out.println(" ( -> " + overflow + " overflow " + ing + ").");
+			System.out.println(" ( -> " + overflow + " overflow " + ing + ").");
 
 			for (Quantity q : r.reqs) {
 				long requiredOfQ = formulaNeeded * q.N;
-				// System.out.println("\t" + requiredOfQ + " " + q.ing + " required.");
+				System.out.println("\t" + requiredOfQ + " " + q.ing + " required.");
 
 				if (!neededQuantities.containsKey(q.ing)) {
 					neededQuantities.put(q.ing, requiredOfQ);
 				} else {
 					neededQuantities.put(q.ing, neededQuantities.get(q.ing) + requiredOfQ);
+				}
+
+				if (!q.ing.equals("ORE") && !queue.contains(q.ing)) {
+					queue.add(q.ing);
 				}
 			}
 
@@ -122,8 +134,8 @@ public class Task14 {
 			// System.out.println(e.getValue() + " < " + recipes.get(e.getKey()).head.N);
 		});
 
-		// System.out.println(overflowQuantities);
-		// System.out.println(neededQuantities);
+		System.out.println(overflowQuantities);
+		System.out.println(neededQuantities);
 		return neededQuantities.values().iterator().next();
 	}
 
