@@ -19,7 +19,7 @@ public class Main {
 	private static IntCodeComputer								comp;
 	private static Board										board		= new Board(CoordComparator.instance);
 	private static Coordinate									coords		= new Coordinate(0, 0);
-	private static int											minX		= 0, maxX = 0, minY = 0, maxY = 0;
+	private static int											minX		= -20, maxX = 20, minY = -20, maxY = 20;
 	private static Coordinate									oxygen;
 	private static Coordinate									curTarget;
 
@@ -138,6 +138,12 @@ public class Main {
 		minY = Math.min(minY, nextStep.y);
 		maxY = Math.max(maxY, nextStep.y);
 		printBoard();
+
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+
+		}
 	}
 
 	private static void printBoard() {
@@ -146,12 +152,12 @@ public class Main {
 				Coordinate c = new Coordinate(x, y);
 				if (coords.equals(c)) {
 					System.out.print("X");
+				} else if (!board.isOccupied(c)) {
+					System.out.print("○");
 				} else if (curTarget.equals(c)) {
 					System.out.print("G");
 				} else if (c.x == 0 && c.y == 0) {
 					System.out.print("*");
-				} else if (!board.isOccupied(c)) {
-					System.out.print("○");
 				} else {
 					System.out.print(board.get(c));
 				}
