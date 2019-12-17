@@ -154,6 +154,22 @@ public class IntCodeComputer extends Thread {
 		}
 	}
 
+	public void waitForInputRequest() {
+		waitForEvent();
+		IntCodeComputerEvent event = eventQueue.poll();
+		if (!event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+			System.err.println("Protocol Error! Input request expected but got " + event + " event");
+		}
+	}
+
+	public void skipToInputRequest() {
+		IntCodeComputerEvent event;
+		do {
+			waitForEvent();
+			event = eventQueue.poll();
+		} while (!event.equals(IntCodeComputerEvent.INPUT_REQUEST));
+	}
+
 	public ConcurrentLinkedQueue<Long> getOutput() {
 		return this.output;
 	}
