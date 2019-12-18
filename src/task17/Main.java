@@ -23,65 +23,65 @@ public class Main {
 		List<String> lines = Files.readAllLines(Paths.get("inputs/input17.txt"));
 
 		Map<Long, Long> initState = IntCodeComputer.initMemory(lines.get(0));
-		// comp = new IntCodeComputer(initState, input, output, eventQueue);
-		// comp.start();
-		//
-		// int x = 0;
-		// int y = 0;
-		// while (comp.isAlive()) {
-		// comp.waitForEvent();
-		// IntCodeComputerEvent event = eventQueue.poll();
-		// if (event.equals(IntCodeComputerEvent.HALT)) {
-		// break;
-		// }
-		//
-		// Long code = output.poll();
-		// if (code == 10) {
-		// y++;
-		// x = 0;
-		// } else {
-		// Coordinate c = new Coordinate(x, y);
-		// if (code != 46 && code != 35) {
-		// coords = c;
-		// }
-		// board.put(c, Character.toString((char) code.intValue()));
-		// x++;
-		// }
-		// }
-		//
-		// System.out.println(board);
-		// // System.out.println(board.intersectionParameters());
-		// System.out.println(coords);
-		//
-		// Direction cur = Direction.UP;
-		// Coordinate next = coords.neighbour(cur);
-		// int steps = 0;
-		// while (true) {
-		// while (board.isScaffold(next)) {
-		// coords = next;
-		// next = coords.neighbour(cur);
-		// steps++;
-		// }
-		//
-		// Direction turnedLeft = cur.turnLeft();
-		// Direction turnedRight = cur.turnRight();
-		// if (board.isScaffold(coords.neighbour(turnedLeft))) {
-		// System.out.print(steps + "," + "L");
-		// cur = turnedLeft;
-		// } else if (board.isScaffold(coords.neighbour(turnedRight))) {
-		// System.out.print(steps + "," + "R");
-		// cur = turnedRight;
-		// } else {
-		// System.out.print(steps);
-		// break;
-		// }
-		//
-		// coords = coords.neighbour(cur);
-		// next = coords.neighbour(cur);
-		// steps = 1;
-		// }
-		//
-		// System.out.println();
+		comp = new IntCodeComputer(initState, input, output, eventQueue);
+		comp.start();
+
+		int x = 0;
+		int y = 0;
+		while (comp.isAlive()) {
+			comp.waitForEvent();
+			IntCodeComputerEvent event = eventQueue.poll();
+			if (event.equals(IntCodeComputerEvent.HALT)) {
+				break;
+			}
+
+			Long code = output.poll();
+			if (code == 10) {
+				y++;
+				x = 0;
+			} else {
+				Coordinate c = new Coordinate(x, y);
+				if (code != 46 && code != 35) {
+					coords = c;
+				}
+				board.put(c, Character.toString((char) code.intValue()));
+				x++;
+			}
+		}
+
+		System.out.println(board);
+		// System.out.println(board.intersectionParameters());
+		System.out.println(coords);
+
+		Direction direction = Direction.UP;
+		Coordinate next = coords.neighbourIn(direction);
+		int steps = 0;
+		while (true) {
+			while (board.isScaffold(next)) {
+				coords = next;
+				next = coords.neighbourIn(direction);
+				steps++;
+			}
+
+			Direction turnedLeft = direction.turnLeft();
+			Direction turnedRight = direction.turnRight();
+			if (board.isScaffold(coords.neighbourIn(turnedLeft))) {
+				System.out.print(steps + "," + "L");
+				direction = turnedLeft;
+			} else if (board.isScaffold(coords.neighbourIn(turnedRight))) {
+				System.out.print(steps + "," + "R");
+				direction = turnedRight;
+			} else {
+				System.out.print(steps);
+				break;
+			}
+
+			coords = coords.neighbourIn(direction);
+			next = coords.neighbourIn(direction);
+			steps = 1;
+		}
+
+		System.out.println();
 
 		String input1 = "A,B,A,C,B,C,B,C,A,C";
 		String inputA = "R,12,L,6,R,12";
@@ -93,8 +93,8 @@ public class Main {
 		initState.put(0l, 2l);
 		comp = new IntCodeComputer(initState, input, output, eventQueue);
 		comp.start();
-		int x = 0;
-		int y = 0;
+		// int x = 0;
+		// int y = 0;
 		while (comp.isAlive()) {
 			comp.waitForEvent();
 			IntCodeComputerEvent event = eventQueue.poll();

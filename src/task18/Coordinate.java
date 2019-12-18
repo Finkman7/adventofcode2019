@@ -1,4 +1,4 @@
-package task17;
+package task18;
 
 import java.util.Comparator;
 
@@ -55,21 +55,5 @@ public class Coordinate implements Cloneable {
 
 	public boolean isAdjacentOf(Coordinate key) {
 		return this.manhattanDistanceTo(key) == 1;
-	}
-
-	public Coordinate neighbourIn(Direction cur) {
-		switch (cur) {
-		case DOWN:
-			return new Coordinate(x, y + 1);
-		case LEFT:
-			return new Coordinate(x - 1, y);
-		default:
-		case NEUTRAL:
-			return new Coordinate(x, y);
-		case RIGHT:
-			return new Coordinate(x + 1, y);
-		case UP:
-			return new Coordinate(x, y - 1);
-		}
 	}
 }
