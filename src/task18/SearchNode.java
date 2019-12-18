@@ -3,7 +3,7 @@ package task18;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SearchNode {
+public class SearchNode implements Comparable<SearchNode> {
 	public final List<Character>	keyOrder;
 	public final int				steps;
 	private final SearchHash		searchHash;
@@ -34,7 +34,12 @@ public class SearchNode {
 
 	@Override
 	public String toString() {
-		return this.steps + ":" + this.keyOrder;
+		return this.steps + ":" + this.keyOrder + "\t" + this.asSearchHash().collected;
+	}
+
+	@Override
+	public int compareTo(SearchNode o) {
+		return Integer.compare(steps, o.steps);
 	}
 
 }

@@ -13,7 +13,7 @@ public class ConditionalPath {
 
 	@Override
 	public String toString() {
-		return "ConditionalPath [shortestPath=" + this.shortestPath + ", prereqs=" + this.prereqs + "]";
+		return this.shortestPath + (this.prereqs.isEmpty() ? "" : " if " + this.prereqs);
 	}
 
 }
