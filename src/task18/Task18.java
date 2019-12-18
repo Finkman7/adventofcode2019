@@ -3,20 +3,20 @@ package task18;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Task18 {
 	private static final int						NUM_PHASES			= 100;
 	private static final Board						board				= new Board(CoordComparator.instance);
-	private static Coordinate						pos;
+	private static Coordinate						startPosition;
 	private static Map<Character, Coordinate>		keyPositions		= new TreeMap<>();
 	// private static Map<Character, Coordinate> doorPositions = new TreeMap<>();
 	private static Integer							bestSolution		= null;
@@ -27,84 +27,78 @@ public class Task18 {
 		parse(lines);
 		System.out.println(board);
 
-		Map<Character, Path> possiblePaths = getPossiblePaths(List.of(), keyPositions.keySet(), pos);
-		Map<Character, Integer> posCaptures = possiblePaths.keySet().stream()
-				.collect(Collectors.toMap(key -> key, key -> getShortestSteps(List.of(key),
-						possiblePaths.get(key).getTail(), possiblePaths.get(key).steps())));
+		Map<Character, Map<Character, ConditionalPath>> pairWisePaths = new HashMap<>();
+		for (Character key1 : keyPositions.keySet()) {
+			pairWisePaths.put(key1, new HashMap<>());
+			for (Character key2 : keyPositions.keySet()) {
+				if (Character.compare(key1, key2) > 0) {
+					ConditionalPath conditionalPath = board.getShortedConditionalPath(keyPositions.get(key1),
+							keyPositions.get(key2));
+					System.out.println(conditionalPath);
+					pairWisePaths.get(key1).put(key2, conditionalPath);
+				}
+			}
+		}
 
-		Character bestFirst = posCaptures.keySet().stream().sorted(Comparator.comparingInt(key -> posCaptures.get(key)))
-				.findFirst().get();
-		System.out.println("starting with " + bestFirst + " gives " + posCaptures.get(bestFirst));
+		// bfsKeySearch();
+		// Map<Character, Path> possiblePaths = getPossiblePaths(List.of(), keyPositions.keySet(), pos);
+		// Map<Character, Integer> posCaptures = possiblePaths.keySet().stream()
+		// .collect(Collectors.toMap(key -> key, key -> getShortestSteps(List.of(key),
+		// possiblePaths.get(key).getTail(), possiblePaths.get(key).steps())));
+		//
+		// Character bestFirst = posCaptures.keySet().stream().sorted(Comparator.comparingInt(key ->
+		// posCaptures.get(key)))
+		// .findFirst().get();
+		// System.out.println("starting with " + bestFirst + " gives " + posCaptures.get(bestFirst));
 	}
 
-	private static Integer getShortestSteps(List<Character> collectedKeys, Coordinate pos, int stepsSoFar) {
-		System.out.print(collectedKeys + " " + stepsSoFar + " - ");
+	private static void bfsKeySearch() {
+		Map<SearchHash, Integer> cache = new HashMap<>();
 
-		if (bestSolution != null) {
-			if (stepsSoFar >= bestSolution) {
-				System.out.println("Pruned");
-				return stepsSoFar;
+		Queue<SearchNode> queue = new LinkedList<>();
+		SearchNode s0 = new SearchNode(List.of(), 0);
+		queue.add(s0);
+		Integer bestSolution = null;
+		int count = 0;
+		do {
+			SearchNode s = queue.poll();
+			if (cache.containsKey(s.asSearchHash())) {
+				if (cache.get(s.asSearchHash()) < s.steps) {
+					System.out.println(s + " pruned!");
+					continue;
+				}
+			} else {
+				cache.put(s.asSearchHash(), s.steps);
 			}
-		}
 
-		Set<Character> toCollect = keyPositions.keySet().stream().filter(key -> !collectedKeys.contains(key))
-				.collect(Collectors.toSet());
+			System.out.println(s);
+			Set<Character> toCollect = keyPositions.keySet().stream().filter(key -> !s.contains(key))
+					.collect(Collectors.toSet());
 
-		System.out.print(toCollect + " - ");
-
-		if (partialSolutions.containsKey(toCollect)) {
-			PartialCost partial = partialSolutions.get(toCollect);
-			Path connection = board.getShortestPath(pos, partial.pos, new HashSet<>(collectedKeys));
-
-			if (connection != null && partial.steps + connection.steps() < stepsSoFar) {
-				System.out.println("Pruned 2");
-			}
-		} else {
-			partialSolutions.put(toCollect, new PartialCost(pos, toCollect, stepsSoFar));
-		}
-		// if (partialSolutions.containsKey(s)) {
-		// if (partialSolutions.get(s) <= stepsSoFar) {
-		// System.out.println("Pruned 2");
-		// return stepsSoFar;
-		// }
-		// } else {
-		// partialSolutions.put(s, stepsSoFar);
-		// }
-		System.out.println();
-
-		if (toCollect.isEmpty()) {
-			if (bestSolution == null || bestSolution > stepsSoFar) {
-				bestSolution = stepsSoFar;
-				System.out.println("Best Solution: " + bestSolution);
-				return stepsSoFar;
-			}
-		}
-
-		Map<Character, Path> possiblePaths = getPossiblePaths(collectedKeys, toCollect, pos);
-
-		Map<Character, Integer> posCaptures = new HashMap<>();
-		possiblePaths.keySet().stream().sorted(Comparator.comparingInt(key -> possiblePaths.get(key).steps()))
-				.forEach(key -> {
-					Integer captureCost = getShortestSteps(
-							Stream.of(collectedKeys, List.of(key)).flatMap(set -> set.stream())
-									.collect(Collectors.toList()),
-							possiblePaths.get(key).getTail(), stepsSoFar + possiblePaths.get(key).steps());
-
-					if (captureCost != null) {
-						posCaptures.put(key, captureCost);
+			if (toCollect.isEmpty()) {
+				if (bestSolution == null || s.steps < bestSolution) {
+					bestSolution = s.steps;
+				}
+			} else {
+				Coordinate coords = s.getLastKey() != null ? keyPositions.get(s.getLastKey()) : startPosition;
+				Map<Character, Path> possiblePaths = getPossiblePaths(s.keyOrder, toCollect, coords);
+				for (Character key : possiblePaths.keySet()) {
+					Path p = possiblePaths.get(key);
+					if (!walksThroughOtherKey(p, toCollect)) {
+						SearchNode ext = s.extend(key, p.steps());
+						queue.add(ext);
 					}
-				});
+				}
+			}
+		} while (!queue.isEmpty());
 
-		if (posCaptures.isEmpty()) {
-			return null;
-		}
+		System.out.println(bestSolution);
+	}
 
-		Character bestNext = posCaptures.keySet().stream().sorted(Comparator.comparingInt(key -> posCaptures.get(key)))
-				.findFirst().get();
+	private static boolean walksThroughOtherKey(Path p, Set<Character> toCollect) {
+		Set<Coordinate> forbidden = toCollect.stream().map(key -> keyPositions.get(key)).collect(Collectors.toSet());
 
-		int result = posCaptures.get(bestNext);
-
-		return result;
+		return p.stream().filter(coords -> forbidden.contains(coords)).count() > 1;
 	}
 
 	private static Map<Character, Path> getPossiblePaths(List<Character> collectedKeys, Set<Character> toCollect, Coordinate pos) {
@@ -138,7 +132,7 @@ public class Task18 {
 					board.put(coords, Token.FREE);
 				} else if (c == '@') {
 					board.put(coords, Token.FREE);
-					pos = coords;
+					startPosition = coords;
 				}
 			}
 		}

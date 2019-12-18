@@ -38,16 +38,16 @@ public class Board extends TreeMap<Coordinate, Token> {
 		return getAdjacentCoordinatesof(c).stream().filter(c2 -> !isWall(c2)).collect(Collectors.toList());
 	}
 
-	public Path getShortestPath(Coordinate c, Coordinate c_Target, Set<Character> collectedKeys) {
-		ParameterSet ps = new ParameterSet(c, c_Target, collectedKeys);
-		if (cache.containsKey(ps)) {
-			return cache.get(ps);
-		}
+	public ConditionalPath getShortedConditionalPath(Coordinate c0, Coordinate c1) {
+		Path shortestPath = getShortestPath(c0, c1);
 
-		if (getFreeAdjacentCoordinatesOf(c_Target).isEmpty()) {
-			cache.put(ps, null);
-			return null;
-		}
+		Set<Character> prereqs = shortestPath.stream().filter(coord -> isOccupied(coord) && get(coord).isDoor())
+				.map(coord -> get(coord).getID().toLowerCase().charAt(0)).collect(Collectors.toSet());
+
+		return new ConditionalPath(shortestPath, prereqs);
+	}
+
+	public Path getShortestPath(Coordinate c, Coordinate c_Target) {
 		// System.out.println("getting shortest... " + c + " -> " + c_Target);
 		Comparator<Path> comparator = byTotalPlusHeuristicDistance(c_Target);
 		PriorityQueue<Path> potentialPaths = new PriorityQueue<>(comparator);
@@ -73,9 +73,6 @@ public class Board extends TreeMap<Coordinate, Token> {
 				} else {
 					for (Coordinate c2 : getFreeAdjacentCoordinatesOf(best.getTail())) {
 						Token t = this.get(c2);
-						if (t.isDoor() && !collectedKeys.contains(t.getID().toLowerCase().charAt(0))) {
-							continue;
-						}
 
 						Path p = new Path(best);
 						p.add(c2);
@@ -90,7 +87,6 @@ public class Board extends TreeMap<Coordinate, Token> {
 			}
 		}
 		// System.out.println("done!");
-		cache.put(ps, shortestPath);
 		return shortestPath;
 	}
 
