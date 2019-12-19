@@ -30,7 +30,7 @@ public class Task18 {
 				if (key1 != key2) {
 					ConditionalPath conditionalPath = board.getShortedConditionalPath(keyPositions.get(key1),
 							keyPositions.get(key2));
-					System.out.println(key1 + " -> " + key2 + ": " + conditionalPath);
+					// System.out.println(key1 + " -> " + key2 + ": " + conditionalPath);
 					pairWisePaths.get(key1).put(key2, conditionalPath);
 				}
 			}

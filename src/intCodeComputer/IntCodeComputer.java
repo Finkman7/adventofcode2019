@@ -77,7 +77,7 @@ public class IntCodeComputer extends Thread {
 				}
 				break;
 			case HALT:
-				System.out.println(name + " halting.");
+				// System.out.println(name + " halting.");
 				fireEvent(IntCodeComputerEvent.HALT);
 				break execution;
 			case RELBASE_OFFSET:
