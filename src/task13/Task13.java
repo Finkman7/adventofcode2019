@@ -8,12 +8,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
-import intCodeComputer.IntCodeComputerEvent;
+import intCodeComputer.IntCodeComputerEventType;
 
 public class Task13 {
 	private static ConcurrentLinkedQueue<Long>					input		= new ConcurrentLinkedQueue<>(),
 			output = new ConcurrentLinkedQueue<>();
-	private static ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue	= new ConcurrentLinkedQueue<>();
+	private static ConcurrentLinkedQueue<IntCodeComputerEventType>	eventQueue	= new ConcurrentLinkedQueue<>();
 	private static IntCodeComputer								c;
 
 	static Board												board		= new Board();
@@ -32,13 +32,13 @@ public class Task13 {
 		while (true) {
 			c.waitForEvent();
 
-			IntCodeComputerEvent event = eventQueue.poll();
-			if (event.equals(IntCodeComputerEvent.HALT)) {
+			IntCodeComputerEventType event = eventQueue.poll();
+			if (event.equals(IntCodeComputerEventType.HALT)) {
 				break;
-			} else if (event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+			} else if (event.equals(IntCodeComputerEventType.INPUT_REQUEST)) {
 				printState();
 				provideInput();
-			} else if (event.equals(IntCodeComputerEvent.OUTPUT)) {
+			} else if (event.equals(IntCodeComputerEventType.OUTPUT)) {
 				processOutput();
 			}
 		}

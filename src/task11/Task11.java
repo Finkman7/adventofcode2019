@@ -10,12 +10,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
-import intCodeComputer.IntCodeComputerEvent;
+import intCodeComputer.IntCodeComputerEventType;
 
 public class Task11 {
 	static ConcurrentLinkedQueue<Long>					input		= new ConcurrentLinkedQueue<>(),
 			output = new ConcurrentLinkedQueue<>();
-	static ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue	= new ConcurrentLinkedQueue<>();
+	static ConcurrentLinkedQueue<IntCodeComputerEventType>	eventQueue	= new ConcurrentLinkedQueue<>();
 	private static IntCodeComputer						c;
 
 	public static void main(String[] args) throws IOException {
@@ -32,11 +32,11 @@ public class Task11 {
 		Set<Coordinate> visited = new HashSet<>();
 		while (true) {
 			c.waitForEvent();
-			IntCodeComputerEvent event = eventQueue.poll();
+			IntCodeComputerEventType event = eventQueue.poll();
 
-			if (event.equals(IntCodeComputerEvent.HALT)) {
+			if (event.equals(IntCodeComputerEventType.HALT)) {
 				break;
-			} else if (event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+			} else if (event.equals(IntCodeComputerEventType.INPUT_REQUEST)) {
 				System.out.println(board.paint(cur, dir));
 				visited.add(cur);
 
@@ -45,7 +45,7 @@ public class Task11 {
 					nextInput = 1l;
 				}
 				put(nextInput);
-			} else if (event.equals(IntCodeComputerEvent.OUTPUT)) {
+			} else if (event.equals(IntCodeComputerEventType.OUTPUT)) {
 				long color = output.poll();
 				if (color == 0) {
 					board.put(cur, ".");

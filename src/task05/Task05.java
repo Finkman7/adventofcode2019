@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
-import intCodeComputer.IntCodeComputerEvent;
+import intCodeComputer.IntCodeComputerEventType;
 
 public class Task05 {
 	private static HashMap<Long, Long> initState;
@@ -19,7 +19,7 @@ public class Task05 {
 		initState = IntCodeComputer.initMemory(lines.get(0));
 
 		ConcurrentLinkedQueue<Long> input = new ConcurrentLinkedQueue<>(), output = new ConcurrentLinkedQueue<>();
-		ConcurrentLinkedQueue<IntCodeComputerEvent> eventQueue = new ConcurrentLinkedQueue<>();
+		ConcurrentLinkedQueue<IntCodeComputerEventType> eventQueue = new ConcurrentLinkedQueue<>();
 		input.add(1l);
 
 		IntCodeComputer c = new IntCodeComputer((Map<Long, Long>) initState.clone(), input, output, eventQueue);

@@ -10,6 +10,36 @@ public class IntCodeComputer extends Thread {
 	private ConcurrentLinkedQueue<Long>					input, output;
 	private ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue;
 	private long										instruction_pointer	= 0l, relBase = 0l;
+	private static long									computers			= 0;
+	private final long									id					= computers++;
+	private long										outputCount			= 0;
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (int) (this.id ^ (this.id >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		IntCodeComputer other = (IntCodeComputer) obj;
+		if (this.id != other.id)
+			return false;
+		return true;
+	}
+
+	@Override
+	public long getId() {
+		return this.id;
+	}
 
 	public IntCodeComputer(Map<Long, Long> mem, ConcurrentLinkedQueue<Long> input, ConcurrentLinkedQueue<Long> output,
 			ConcurrentLinkedQueue<IntCodeComputerEvent> eventQueue) {
@@ -39,7 +69,9 @@ public class IntCodeComputer extends Thread {
 				break;
 			case INPUT:
 				synchronized (input) {
-					fireEvent(IntCodeComputerEvent.INPUT_REQUEST);
+					if (input.isEmpty()) {
+						fireEvent(IntCodeComputerEventType.INPUT_REQUEST);
+					}
 					while (input.isEmpty()) {
 						try {
 							input.wait();
@@ -47,14 +79,14 @@ public class IntCodeComputer extends Thread {
 						}
 					}
 				}
-				// System.out.println(name + " <--[in]\t" + input.peek());
 				mem.put(p_args[0], input.poll());
 				break;
 			case OUTPUT:
 				synchronized (output) {
 					output.add(read(p_args[0]));
 					output.notifyAll();
-					fireEvent(IntCodeComputerEvent.OUTPUT);
+					// System.out.println(this + " firing output " + read(p_args[0]));
+					fireEvent(IntCodeComputerEventType.OUTPUT);
 					// System.out.println(name + " [out]-->\t" + read(p_args[0]));
 				}
 				break;
@@ -78,7 +110,7 @@ public class IntCodeComputer extends Thread {
 				break;
 			case HALT:
 				// System.out.println(name + " halting.");
-				fireEvent(IntCodeComputerEvent.HALT);
+				fireEvent(IntCodeComputerEventType.HALT);
 				break execution;
 			case RELBASE_OFFSET:
 				relBase += read(p_args[0]);
@@ -128,9 +160,13 @@ public class IntCodeComputer extends Thread {
 		}).toArray();
 	}
 
-	private void fireEvent(IntCodeComputerEvent event) {
+	private void fireEvent(IntCodeComputerEventType type) {
+		if (type.equals(IntCodeComputerEventType.OUTPUT) && outputCount++ % 3 != 1) {
+			return;
+		}
+
 		synchronized (eventQueue) {
-			eventQueue.add(event);
+			eventQueue.add(new IntCodeComputerEvent(type, this));
 			eventQueue.notifyAll();
 		}
 	}
@@ -149,7 +185,7 @@ public class IntCodeComputer extends Thread {
 	public void waitForOutput() {
 		waitForEvent();
 		IntCodeComputerEvent event = eventQueue.poll();
-		if (!event.equals(IntCodeComputerEvent.OUTPUT)) {
+		if (!event.type.equals(IntCodeComputerEventType.OUTPUT)) {
 			System.err.println("Protocol Error! Output expected but got " + event + " event");
 		}
 	}
@@ -157,9 +193,17 @@ public class IntCodeComputer extends Thread {
 	public void waitForInputRequest() {
 		waitForEvent();
 		IntCodeComputerEvent event = eventQueue.poll();
-		if (!event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+		if (!event.type.equals(IntCodeComputerEventType.INPUT_REQUEST)) {
 			System.err.println("Protocol Error! Input request expected but got " + event + " event");
 		}
+	}
+
+	public void skipToOutput() {
+		IntCodeComputerEvent event;
+		do {
+			waitForEvent();
+			event = eventQueue.poll();
+		} while (!event.type.equals(IntCodeComputerEventType.OUTPUT));
 	}
 
 	public void skipToInputRequest() {
@@ -167,7 +211,7 @@ public class IntCodeComputer extends Thread {
 		do {
 			waitForEvent();
 			event = eventQueue.poll();
-		} while (!event.equals(IntCodeComputerEvent.INPUT_REQUEST));
+		} while (!event.type.equals(IntCodeComputerEventType.INPUT_REQUEST));
 	}
 
 	public ConcurrentLinkedQueue<Long> getOutput() {
@@ -183,6 +227,11 @@ public class IntCodeComputer extends Thread {
 		}
 
 		return mem;
+	}
+
+	@Override
+	public String toString() {
+		return "IntCodeComputer " + getId();
 	}
 
 	private enum Operation {

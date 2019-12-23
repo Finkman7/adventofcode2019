@@ -9,12 +9,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import intCodeComputer.IntCodeComputer;
-import intCodeComputer.IntCodeComputerEvent;
+import intCodeComputer.IntCodeComputerEventType;
 
 public class Main {
 	private static ConcurrentLinkedQueue<Long>					input		= new ConcurrentLinkedQueue<>(),
 			output = new ConcurrentLinkedQueue<>();
-	private static ConcurrentLinkedQueue<IntCodeComputerEvent>	eventQueue	= new ConcurrentLinkedQueue<>();
+	private static ConcurrentLinkedQueue<IntCodeComputerEventType>	eventQueue	= new ConcurrentLinkedQueue<>();
 	private static IntCodeComputer								comp;
 	private static Board										board		= new Board(CoordComparator.instance);
 	private static int											sum			= 0;
@@ -31,15 +31,15 @@ public class Main {
 
 		while (true) {
 			comp.waitForEvent();
-			IntCodeComputerEvent event = eventQueue.poll();
-			if (event.equals(IntCodeComputerEvent.HALT)) {
+			IntCodeComputerEventType event = eventQueue.poll();
+			if (event.equals(IntCodeComputerEventType.HALT)) {
 				break;
-			} else if (event.equals(IntCodeComputerEvent.INPUT_REQUEST)) {
+			} else if (event.equals(IntCodeComputerEventType.INPUT_REQUEST)) {
 				for (String line : program) {
 					feed(line);
 				}
 				program = List.of();
-			} else if (event.equals(IntCodeComputerEvent.OUTPUT)) {
+			} else if (event.equals(IntCodeComputerEventType.OUTPUT)) {
 				readOutput();
 			}
 		}
